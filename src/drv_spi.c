@@ -13,13 +13,13 @@
 
 static int spiDetect(void);
 
+gpio_config_t gpio;
+SPI_InitTypeDef spi;
+
 #define FLASH_M25P16    (0x202015)
 
 int spiInit(void)
 {
-    gpio_config_t gpio;
-    SPI_InitTypeDef spi;
-
     // Enable SPI2 clock
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
 
@@ -114,5 +114,21 @@ static int spiDetect(void)
     if (in[0] == 0x70)
         return SPI_DEVICE_MPU;
 
+		// Change to SPI Mode 0
+		SPI_I2S_DeInit(SPI2);
+		spi.SPI_CPOL = SPI_CPOL_Low; 
+    spi.SPI_CPHA = SPI_CPHA_1Edge;
+		SPI_Init(SPI2, &spi);
+    SPI_Cmd(SPI2, ENABLE);
+		delay(100);
+		
+    // try autodetect CC2500
+    spiSelect(true);
+    spiTransferByte(0x30 | 0xC0);
+    in[0] = spiTransferByte(0xff);
+    spiSelect(false);
+    if (in[0] == 0x80)
+        return SPI_DEVICE_CC2500;
+		
     return SPI_DEVICE_NONE;
 }
