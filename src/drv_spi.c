@@ -114,14 +114,14 @@ static int spiDetect(void)
     if (in[0] == 0x70)
         return SPI_DEVICE_MPU;
 
-		// Change to SPI Mode 0
-		SPI_I2S_DeInit(SPI2);
-		spi.SPI_CPOL = SPI_CPOL_Low; 
+    // Change to SPI Mode 0
+    SPI_I2S_DeInit(SPI2);
+    spi.SPI_CPOL = SPI_CPOL_Low; 
     spi.SPI_CPHA = SPI_CPHA_1Edge;
-		SPI_Init(SPI2, &spi);
+    SPI_Init(SPI2, &spi);
     SPI_Cmd(SPI2, ENABLE);
-		delay(100);
-		
+        delay(100);
+        
     // try autodetect CC2500
     spiSelect(true);
     spiTransferByte(0x30 | 0xC0);
@@ -129,6 +129,6 @@ static int spiDetect(void)
     spiSelect(false);
     if (in[0] == 0x80)
         return SPI_DEVICE_CC2500;
-		
+        
     return SPI_DEVICE_NONE;
 }
