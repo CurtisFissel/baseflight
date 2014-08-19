@@ -9,6 +9,7 @@
 
 core_t core;
 int hw_revision = 0;
+int FrSkyON = 0;
 
 extern rcReadRawDataPtr rcReadRawFunc;
 
@@ -77,6 +78,9 @@ int main(void)
     if (hw_revision != NAZE32_SP)
         i2cInit(I2C_DEVICE);
 
+		if (id == SPI_DEVICE_CC2500)
+        FrSkyON = 1;
+		
     // configure power ADC
     if (mcfg.power_adc_channel > 0 && (mcfg.power_adc_channel == 1 || mcfg.power_adc_channel == 9))
         adc_params.powerAdcChannel = mcfg.power_adc_channel;
