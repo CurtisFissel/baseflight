@@ -114,13 +114,13 @@ static int spiDetect(void)
     if (in[0] == 0x70)
         return SPI_DEVICE_MPU;
 
+#ifdef FRSKY
     // Change to SPI Mode 0
     SPI_I2S_DeInit(SPI2);
     spi.SPI_CPOL = SPI_CPOL_Low; 
     spi.SPI_CPHA = SPI_CPHA_1Edge;
     SPI_Init(SPI2, &spi);
     SPI_Cmd(SPI2, ENABLE);
-        delay(100);
         
     // try autodetect CC2500
     spiSelect(true);
@@ -129,6 +129,8 @@ static int spiDetect(void)
     spiSelect(false);
     if (in[0] == 0x80)
         return SPI_DEVICE_CC2500;
-        
+#endif
+    
+    
     return SPI_DEVICE_NONE;
 }
