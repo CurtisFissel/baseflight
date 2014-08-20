@@ -210,6 +210,7 @@ typedef struct baro_t {
 #define GPS
 #define LEDRING
 #define SONAR
+#define FRSKY
 #define BUZZER
 #define LED0
 #define LED1
