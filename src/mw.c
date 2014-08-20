@@ -928,6 +928,10 @@ void loop(void)
         }
 #endif
 
+#ifdef FRSKY
+        cc2500spiMain(); //FrSky Initalize 
+#endif   
+        
         // PID - note this is function pointer set by setPIDController()
         pid_controller();
 
