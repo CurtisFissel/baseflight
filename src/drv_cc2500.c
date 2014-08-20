@@ -9,15 +9,19 @@ uint8_t txid[2];
 uint8_t calData[60];	 
 uint8_t hopData[60];
 
-int count=0;
+uint8_t listLength;
 
+int count=0;
+static uint8_t bind_jumer=0;
 
 
 void cc2500_writeReg(uint8_t address, uint8_t data);
 void cc2500_resetChip(void);
 void cc2500_strobe(uint8_t address);
 unsigned char cc2500_readReg(unsigned char address);
-void initialize(int bind);
+void RegistersInit(int bind);
+void CC2500tunning();
+void getBind(void);
 
 void cc2500spiDetect(void)
 {
@@ -31,14 +35,14 @@ void cc2500spiDetect(void)
 
 void cc2500spiInit(void)
 {
-    initialize(1);
-  
+    RegistersInit(1);
+    binding();
     cc2500_writeReg(CC2500_0A_CHANNR, hopData[channr]);//0A-hop
     cc2500_writeReg(CC2500_23_FSCAL3,0x89);//23-89
     cc2500_strobe(CC2500_SRX);
 }
 
-void initialize(int bind)
+void RegistersInit(int bind)
 {
     cc2500_resetChip();
     cc2500_writeReg(CC2500_02_IOCFG0,   0x01);    // reg 0x02: RX complete interrupt(GDO0)
@@ -90,8 +94,7 @@ void cc2500spiMain(void)
     //spiTransferByte(0x31 | 0xC0);
     //in[0] = spiTransferByte(0xff);
     //spiSelect(false);
-  
-    ccLen = cc2500_readReg(CC2500_3B_RXBYTES | CC2500_READ_BURST) & 0x7F;
+
 }
 
 void _spi_write(uint8_t command) 
@@ -138,7 +141,37 @@ unsigned char cc2500_readReg(unsigned char address)
   return(result); 
 } 
 
-void tunning(){
+
+
+static void ReadRegisterMulti(uint8_t address, uint8_t data[], uint8_t length)
+{
+    unsigned char i;
+
+    spiSelect(true);
+    _spi_write(address);
+    for(i = 0; i < length; i++)
+    {
+        data[i] = spiTransferByte(0xff); 
+    }
+    spiSelect(false);
+}
+
+void cc2500_readFifo(uint8_t *dpbuffer, int len)
+{
+    ReadRegisterMulti(CC2500_3F_RXFIFO | CC2500_READ_BURST, dpbuffer, len);
+}
+
+void binding(){
+		//LED_ON;
+		CC2500tunning();
+		cc2500_writeReg(CC2500_0C_FSCTRL0,count);
+		int adr=100;
+		//EEPROM.write(adr+101,count);
+		getBind();
+
+}
+
+void CC2500tunning(){
 cc2500_strobe(CC2500_SRX);//enter in rx mode
 int count1=0;
 while(1){
@@ -164,3 +197,62 @@ count=count+10;
 			}
 		}	
 }
+
+void getBind(void)
+{
+	cc2500_strobe(CC2500_SRX);//enter in rx mode
+	listLength = 0;
+	bool eol = false;	
+	//           len|bind |tx id|idx|h0|h1|h2|h3|h4|00|00|00|00|00|00|01
+	// Start by getting bind packet 0 and the txid
+	//        0  1   2  txid0(3) txid1()4    5  6  7   8  9 10 11 12 13 14 15 16 17
+//ccdata	//11 03 01  d7       2d          00 00 1e 3c 5b 78 00 00 00 00 00 00 01
+            //11 03 01  19       3e          00 02 8e 2f bb 5c 00 00 00 00 00 00 01
+	while (1) {
+			ccLen = cc2500_readReg(CC2500_3B_RXBYTES | CC2500_READ_BURST) & 0x7F;
+			if (ccLen == 18) {						
+				cc2500_readFifo((uint8_t *)ccData, ccLen);
+				if(ccData[ccLen-1] & 0x80) {	
+					if(ccData[2]==0x01) {	
+						if(ccData[5]==0x00) {	
+							txid[0] = ccData[3];
+							txid[1]= ccData[4];							
+							for (uint8_t n=0;n<5;n++) {
+								hopData[ccData[5]+n] = ccData[6+n];
+							}
+							break;
+						}
+					}
+				}
+			}
+	}
+
+	for (uint8_t bindIdx=0x05; bindIdx<=120;bindIdx+=5) {
+		while (1) {
+				ccLen = cc2500_readReg(CC2500_3B_RXBYTES | CC2500_READ_BURST) & 0x7F;	
+				if (ccLen == 18) {						
+					cc2500_readFifo((uint8_t *)ccData, ccLen);
+					if(ccData[ccLen-1] & 0x80) {	
+						if(ccData[2]==0x01) {														
+							if((ccData[3]==txid[0]) && (ccData[4]==txid[1])) {	
+								if(ccData[5]==bindIdx) {							
+									for (uint8_t n=0;n<5;n++) {
+										if (ccData[6+n] == ccData[ccLen-3]) {	
+											eol = true;
+											listLength = ccData[5]+n;
+											break;
+										}
+										hopData[ccData[5]+n] = ccData[6+n];
+									}
+									break;	
+								}
+							}
+						}
+					}
+				}
+		}
+		if (eol) break;	// End of list found, stop!
+	}
+	//Store_bind();	
+	cc2500_strobe(CC2500_SIDLE);	// Back to idle
+}	
