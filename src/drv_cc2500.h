@@ -1,6 +1,7 @@
 #pragma once
 
 void cc2500spiDetect(void);
+void cc2500spiInit(void);
 
 
 // CC2500, Register Addresses 
