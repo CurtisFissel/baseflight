@@ -1,6 +1,23 @@
 #include "board.h"
 
+static uint8_t ccData[27];
+static uint8_t ccLen;
+static uint8_t channr;
+
+uint8_t txid[2];
+
+uint8_t calData[60];	 
+uint8_t hopData[60];
+
+int count=0;
+
+
+
 void cc2500_writeReg(uint8_t address, uint8_t data);
+void cc2500_resetChip(void);
+void cc2500_strobe(uint8_t address);
+unsigned char cc2500_readReg(unsigned char address);
+void initialize(int bind);
 
 void cc2500spiDetect(void)
 {
@@ -13,6 +30,15 @@ void cc2500spiDetect(void)
 }
 
 void cc2500spiInit(void)
+{
+    initialize(1);
+  
+    cc2500_writeReg(CC2500_0A_CHANNR, hopData[channr]);//0A-hop
+    cc2500_writeReg(CC2500_23_FSCAL3,0x89);//23-89
+    cc2500_strobe(CC2500_SRX);
+}
+
+void initialize(int bind)
 {
     cc2500_resetChip();
     cc2500_writeReg(CC2500_02_IOCFG0,   0x01);    // reg 0x02: RX complete interrupt(GDO0)
@@ -48,29 +74,33 @@ void cc2500spiInit(void)
     cc2500_writeReg(CC2500_2D_TEST1,    0x31);    // reg 0x2D
     cc2500_writeReg(CC2500_2E_TEST0,    0x0B);    // reg 0x2E
     cc2500_writeReg(CC2500_03_FIFOTHR,  0x0F);	  // reg 0x03
-    //cc2500_writeReg(CC2500_09_ADDR, bind ? 0x03 : txid[0]);	 NEED TO ADD BIND AND TXID
+    cc2500_writeReg(CC2500_09_ADDR, bind ? 0x03 : txid[0]);
     cc2500_strobe(CC2500_SIDLE);	// Go to idle...
     
     cc2500_writeReg(CC2500_07_PKTCTRL1,0x0D);	// reg 0x07 hack: Append status, filter by address, auto-flush on bad crc, PQT=0
-    //cc2500_writeReg(CC2500_0C_FSCTRL0,bind ? 0x00 : count);	// Frequency offset hack  NEED TO ADD BIND
+    cc2500_writeReg(CC2500_0C_FSCTRL0,bind ? 0x00 : count);	// Frequency offset hack
     cc2500_writeReg(CC2500_0A_CHANNR, 0x00);
 }
 
 void cc2500spiMain(void)
 {
-    uint8_t in[4];
+    //uint8_t in[4];
 
-    spiSelect(true);
-    spiTransferByte(0x31 | 0xC0);
-    in[0] = spiTransferByte(0xff);
-    spiSelect(false);
+    //spiSelect(true);
+    //spiTransferByte(0x31 | 0xC0);
+    //in[0] = spiTransferByte(0xff);
+    //spiSelect(false);
+  
+    ccLen = cc2500_readReg(CC2500_3B_RXBYTES | CC2500_READ_BURST) & 0x7F;
 }
 
-void _spi_write(uint8_t command) {
+void _spi_write(uint8_t command) 
+{
     spiTransferByte(command | 0x80);
 }
 
-void cc2500_writeReg(uint8_t address, uint8_t data) {//same as 7105
+void cc2500_writeReg(uint8_t address, uint8_t data) 
+{//same as 7105
     spiSelect(true);
     _spi_write(address); 
     _spi_write(data);  
@@ -90,8 +120,47 @@ void cc2500_resetChip(void)
     delayMicroseconds(100);
 }
 
-void cc2500_strobe(uint8_t address) {
+void cc2500_strobe(uint8_t address) 
+{
     spiSelect(true);
     _spi_write(address);
     spiSelect(false);
+}
+
+unsigned char cc2500_readReg(unsigned char address) 
+{ 
+  uint8_t result;
+  spiSelect(true);
+  address |=0x80; //bit 7 =1 for reading
+  _spi_write(address);
+  result = spiTransferByte(0xff);  
+  spiSelect(false);
+  return(result); 
+} 
+
+void tunning(){
+cc2500_strobe(CC2500_SRX);//enter in rx mode
+int count1=0;
+while(1){
+count1++;
+if (count>=250){
+count=0;
+}
+if(count1>3000){
+count1=0;
+cc2500_writeReg(CC2500_0C_FSCTRL0,count);	// Frequency offset hack
+count=count+10;
+}
+			ccLen = cc2500_readReg(CC2500_3B_RXBYTES | CC2500_READ_BURST) & 0x7F;
+			if (ccLen == 18) {						
+				//cc2500_readFifo((uint8_t *)ccData, ccLen);
+				if(ccData[ccLen-1] & 0x80) {	
+					if(ccData[2]==0x01) {	
+						if(ccData[5]==0x00) {	
+							break;
+						}
+					}
+				}
+			}
+		}	
 }

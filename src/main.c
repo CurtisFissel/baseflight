@@ -80,6 +80,7 @@ int main(void)
 #ifdef FRSKY
         if (id == SPI_DEVICE_CC2500) 
         cc2500spiInit(); //FrSky Initalize 
+        
 #endif
         
     // configure power ADC
