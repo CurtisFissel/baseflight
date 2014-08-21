@@ -2,7 +2,7 @@
 
 void cc2500spiDetect(void);
 void cc2500spiInit(void);
-
+void cc2500spiMain(void);
 
 // CC2500, Register Addresses 
 enum {
