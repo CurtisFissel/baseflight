@@ -21,7 +21,7 @@ void cc2500_strobe(uint8_t address);
 unsigned char cc2500_readReg(unsigned char address);
 void RegistersInit(int bind);
 void CC2500tunning();
-void getBind(void);
+void bindFrsky();
 
 void cc2500spiDetect(void)
 {
@@ -36,7 +36,8 @@ void cc2500spiDetect(void)
 void cc2500spiInit(void)
 {
     RegistersInit(1);
-    binding();
+    bindFrsky();
+    //RegistersInit(0);
     cc2500_writeReg(CC2500_0A_CHANNR, hopData[channr]);//0A-hop
     cc2500_writeReg(CC2500_23_FSCAL3,0x89);//23-89
     cc2500_strobe(CC2500_SRX);
@@ -78,7 +79,8 @@ void RegistersInit(int bind)
     cc2500_writeReg(CC2500_2D_TEST1,    0x31);    // reg 0x2D
     cc2500_writeReg(CC2500_2E_TEST0,    0x0B);    // reg 0x2E
     cc2500_writeReg(CC2500_03_FIFOTHR,  0x0F);	  // reg 0x03
-    cc2500_writeReg(CC2500_09_ADDR, bind ? 0x03 : txid[0]);
+    //cc2500_writeReg(CC2500_09_ADDR, bind ? 0x03 : txid[0]);
+    cc2500_writeReg(CC2500_09_ADDR, bind ? 0x03 : 0x42); //MY SPECIFIC TXID
     cc2500_strobe(CC2500_SIDLE);	// Go to idle...
     
     cc2500_writeReg(CC2500_07_PKTCTRL1,0x0D);	// reg 0x07 hack: Append status, filter by address, auto-flush on bad crc, PQT=0
@@ -161,9 +163,9 @@ void cc2500_readFifo(uint8_t *dpbuffer, int len)
     ReadRegisterMulti(CC2500_3F_RXFIFO | CC2500_READ_BURST, dpbuffer, len);
 }
 
-void binding(){
+void bindFrsky(){
 		//LED_ON;
-		CC2500tunning();
+		//CC2500tunning();
 		cc2500_writeReg(CC2500_0C_FSCTRL0,count);
 		int adr=100;
 		//EEPROM.write(adr+101,count);
@@ -175,6 +177,7 @@ void CC2500tunning(){
 cc2500_strobe(CC2500_SRX);//enter in rx mode
 int count1=0;
 while(1){
+  delay(100);
 count1++;
 if (count>=250){
 count=0;
@@ -185,14 +188,11 @@ cc2500_writeReg(CC2500_0C_FSCTRL0,count);	// Frequency offset hack
 count=count+10;
 }
 			ccLen = cc2500_readReg(CC2500_3B_RXBYTES | CC2500_READ_BURST) & 0x7F;
-			if (ccLen == 18) {						
+			if (ccLen >= 18) {						
 				//cc2500_readFifo((uint8_t *)ccData, ccLen);
-				if(ccData[ccLen-1] & 0x80) {	
-					if(ccData[2]==0x01) {	
-						if(ccData[5]==0x00) {	
+				if(ccData[ccLen-1] & 0x80 && ccData[2]==0x01 && ccData[5]==0x00) {	
+          
 							break;
-						}
-					}
 				}
 			}
 		}	
@@ -210,7 +210,7 @@ void getBind(void)
             //11 03 01  19       3e          00 02 8e 2f bb 5c 00 00 00 00 00 00 01
 	while (1) {
 			ccLen = cc2500_readReg(CC2500_3B_RXBYTES | CC2500_READ_BURST) & 0x7F;
-			if (ccLen == 18) {						
+			if (ccLen >= 18) {						
 				cc2500_readFifo((uint8_t *)ccData, ccLen);
 				if(ccData[ccLen-1] & 0x80) {	
 					if(ccData[2]==0x01) {	
@@ -230,7 +230,7 @@ void getBind(void)
 	for (uint8_t bindIdx=0x05; bindIdx<=120;bindIdx+=5) {
 		while (1) {
 				ccLen = cc2500_readReg(CC2500_3B_RXBYTES | CC2500_READ_BURST) & 0x7F;	
-				if (ccLen == 18) {						
+				if (ccLen >= 18) {						
 					cc2500_readFifo((uint8_t *)ccData, ccLen);
 					if(ccData[ccLen-1] & 0x80) {	
 						if(ccData[2]==0x01) {														
