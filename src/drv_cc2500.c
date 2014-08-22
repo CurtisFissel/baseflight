@@ -12,6 +12,8 @@ uint8_t hopData[60];
 uint8_t listLength;
 
 int count=0;
+int maxMissingPackets=170;
+int missingPackets=0;
 static uint8_t bind_jumer=0;
 
 
@@ -95,6 +97,11 @@ void cc2500spiMain(void)
     //spiTransferByte(0x31 | 0xC0);
     //in[0] = spiTransferByte(0xff);
     //spiSelect(false);
+
+    if (missingPackets >= maxMissingPackets) 
+    {
+        /* Failsafe code */
+    }
 
 }
 
