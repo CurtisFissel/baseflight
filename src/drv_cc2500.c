@@ -79,8 +79,7 @@ void RegistersInit(int bind)
     cc2500_writeReg(CC2500_2D_TEST1,    0x31);    // reg 0x2D
     cc2500_writeReg(CC2500_2E_TEST0,    0x0B);    // reg 0x2E
     cc2500_writeReg(CC2500_03_FIFOTHR,  0x0F);	  // reg 0x03
-    //cc2500_writeReg(CC2500_09_ADDR, bind ? 0x03 : txid[0]);
-    cc2500_writeReg(CC2500_09_ADDR, bind ? 0x03 : 0x42); //MY SPECIFIC TXID
+    cc2500_writeReg(CC2500_09_ADDR, bind ? 0x03 : txid[0]);
     cc2500_strobe(CC2500_SIDLE);	// Go to idle...
     
     cc2500_writeReg(CC2500_07_PKTCTRL1,0x0D);	// reg 0x07 hack: Append status, filter by address, auto-flush on bad crc, PQT=0
